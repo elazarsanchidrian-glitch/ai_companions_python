@@ -1,8 +1,68 @@
 import json
 import os
+import re
 import ollama
 
-# File where chat history will be saved on your computer
+# --- 1. Audio Initialization (RTX 3050 CUDA setup) ---
+VOICE_ENABLED = True
+try:
+    import soundfile as sf
+    import pygame
+    from kokoro import KPipeline
+
+    # Initialize Pygame mixer for audio playback
+    pygame.mixer.init()
+
+    print("[System] Loading Kokoro TTS model to RTX 3050...")
+    # 'a' = American English ('b' = British English)
+    pipeline = KPipeline(lang_code="a")
+    OUTPUT_WAV = "temp_npc_speech.wav"
+    print("[System] Kokoro TTS initialized successfully on GPU!\n")
+
+except Exception as init_err:
+    print(f"[System Warning] Audio initialization skipped: {init_err}")
+    print("[System] Running NPC in text-only mode.\n")
+    VOICE_ENABLED = False
+
+
+# Configured for a feline, tribal undertone (blended voice + slower pace)
+VOICE_NAME = "bm_fable"
+SPEED_SETTING = 0.90
+
+
+def speak_text(text: str):
+    """Clean action markers, run through Kokoro on GPU, and play audio."""
+    if not VOICE_ENABLED:
+        return
+
+    # Strip action descriptions inside asterisks so TTS only speaks dialogue
+    clean_speech = re.sub(r"\*.*?\*", "", text).strip()
+    if not clean_speech:
+        return
+
+    try:
+        # Pass the blended voice name and slower feline pace setting
+        generator = pipeline(clean_speech, voice=VOICE_NAME, speed=SPEED_SETTING)
+
+        for _, _, audio in generator:
+            # Save generated audio tensor to a 24kHz WAV file
+            sf.write(OUTPUT_WAV, audio, 24000)
+
+            # Play audio using pygame
+            pygame.mixer.music.load(OUTPUT_WAV)
+            pygame.mixer.music.play()
+
+            # Wait while audio plays so terminal output stays in sync
+            while pygame.mixer.music.get_busy():
+                pygame.time.Clock().tick(10)
+
+            pygame.mixer.music.unload()
+
+    except Exception as err:
+        print(f"\n[TTS Error: {err}]\n")
+
+
+# --- 2. Memory & Ollama NPC Setup ---
 MEMORY_FILE = "kerra_memory.json"
 
 KERRA_SYSTEM_INSTRUCTION = """
@@ -12,7 +72,7 @@ the world of EverQuest.
 PERSONALITY:
 - Proud, cautious of outsiders and especially disdainful of the "heretic" erudites of Erudin and Paineel.
 - Respectful of nature and the Primal Spirits.
-- Loyal to your Vah Shir cousins (who were transported to the moon Luclin from erudite bad magic) and the Kerra tribes scattered across Norrath (like the Kejekans of Stonebrunt mountains and the Kerra tribe of Barren Coast).
+- Loyal to your Vah Shir cousins and the Kerra tribes scattered across Norrath.
 
 SPEECH:
 - Speak in a distinct feline, tribal manner.
@@ -20,16 +80,15 @@ SPEECH:
 - Call humans, elves and other humanoid races "smooth-skins" or "strangers".
 - Use occasional actions such as *purrs softly* or *swishes tail*.
 - Keep replies brief, usually 1-3 sentences.
-- Use catspeak and feline expressions, but avoid excessive slang or internet memes.
 
 KNOWLEDGE:
-- You know about Erudin, Paineel, Odus, Erudites, Paineel Evil Erudites, Vah Shir cousins who are on the moon Luclin, and scattered brotherly Kerra tribes across Norrath, and local fishing and hunting.
+- You know about Erudin, Paineel, Odus, Erudites, Vah Shir cousins, and local hunting.
 - Stay in character as a classic MMORPG quest NPC.
 """
 
 
 def load_memory():
-    """Load conversation history from a JSON file if it exists."""
+    """Load conversation history from JSON file."""
     if os.path.exists(MEMORY_FILE):
         with open(MEMORY_FILE, "r", encoding="utf-8") as f:
             return json.load(f)
@@ -37,25 +96,28 @@ def load_memory():
 
 
 def save_memory(conversation):
-    """Save conversation history to a JSON file."""
+    """Save conversation history to JSON file."""
     with open(MEMORY_FILE, "w", encoding="utf-8") as f:
         json.dump(conversation, f, indent=2)
 
 
 def start_npc_chat():
-    # Load past memory
     conversation = load_memory()
 
     print("=" * 50)
-    print(" Welcome to Kerra Isle - Local Memory NPC")
+    print(" Welcome to Kerra Isle - Local GPU NPC")
     print("=" * 50)
 
     if conversation:
+        greeting = "*ear twitches* Ah, the smooth-skin returns."
         print("A familiar furred Kerra looks up as you approach...")
-        print("Kerra NPC: *ear twitches* Ah, the smooth-skin returns.\n")
+        print(f"Kerra NPC: {greeting}\n")
+        speak_text(greeting)
     else:
+        greeting = "*ear twitches* What brings a smooth-skin to our Isle? Speak quickly."
         print("A tall, furred Kerra watches you with golden eyes.")
-        print("Kerra NPC: *ear twitches* What brings a smooth-skin to our Isle? Speak quickly.\n")
+        print(f"Kerra NPC: {greeting}\n")
+        speak_text(greeting)
 
     print("Type 'quit' or 'exit' to leave.\n")
 
@@ -63,19 +125,15 @@ def start_npc_chat():
         user_input = input("You: ").strip()
 
         if user_input.lower() in ("quit", "exit"):
-            print(
-                "\nKerra NPC: *ear twitches* May the Primal "
-                "Spirits watch your path, smooth-skin."
-            )
+            farewell = "*ear twitches* May the Primal Spirits watch your path, smooth-skin."
+            print(f"\nKerra NPC: {farewell}")
+            speak_text(farewell)
             break
 
         if not user_input:
             continue
 
-        conversation.append({
-            "role": "user",
-            "content": user_input
-        })
+        conversation.append({"role": "user", "content": user_input})
 
         try:
             print("Kerra is thinking...", end="\r", flush=True)
@@ -84,21 +142,18 @@ def start_npc_chat():
                 model="llama3.2",
                 messages=[
                     {"role": "system", "content": KERRA_SYSTEM_INSTRUCTION},
-                    *conversation
-                ]
+                    *conversation,
+                ],
             )
 
             answer = response["message"]["content"].strip()
-
             print(" " * 30, end="\r")
             print(f"Kerra NPC: {answer}\n")
 
-            conversation.append({
-                "role": "assistant",
-                "content": answer
-            })
+            # Speak response aloud
+            speak_text(answer)
 
-            # Save history after every response
+            conversation.append({"role": "assistant", "content": answer})
             save_memory(conversation)
 
         except Exception as e:
