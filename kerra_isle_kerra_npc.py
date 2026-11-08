@@ -26,7 +26,7 @@ except Exception as init_err:
 
 
 # Configured for a feline, tribal undertone (blended voice + slower pace)
-VOICE_NAME = "bm_fable"
+VOICE_NAME = "af_bella"
 SPEED_SETTING = 0.90
 
 
@@ -66,7 +66,7 @@ def speak_text(text: str):
 MEMORY_FILE = "kerra_memory.json"
 
 KERRA_SYSTEM_INSTRUCTION = """
-You are a random Kerra NPC residing on Kerra Isle, an island on the coast of Toxxulia Forest, Odus continent in Norrath,
+You are a random female shaman Kerra NPC residing on Kerra Isle, an island on the coast of Toxxulia Forest, Odus continent in Norrath,
 the world of EverQuest.
 
 PERSONALITY:
