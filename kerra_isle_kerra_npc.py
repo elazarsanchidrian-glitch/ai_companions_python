@@ -8,15 +8,30 @@ VOICE_ENABLED = True
 try:
     import soundfile as sf
     import pygame
+    import torch
     from kokoro import KPipeline
 
     # Initialize Pygame mixer for audio playback
     pygame.mixer.init()
 
-    print("[System] Loading Kokoro TTS model to RTX 3050...")
+    print("[System] Loading Kokoro TTS model to GPU...")
     # 'a' = American English ('b' = British English)
     pipeline = KPipeline(lang_code="a")
     OUTPUT_WAV = "temp_npc_speech.wav"
+
+    # Fetch voice tensors internally via Kokoro pipeline to avoid file path errors
+    print("[System] Blending feline voice profile (70% Bella + 30% Sarah)...")
+    bella = pipeline.load_single_voice("af_bella")
+    sarah = pipeline.load_single_voice("af_sarah")
+
+    # Blend tensors (70% high/cute Bella + 30% soft Sarah)
+    if isinstance(bella, torch.Tensor):
+        VOICE_MIX = (0.7 * bella.float()) + (0.3 * sarah.float())
+    else:
+        import numpy as np
+        VOICE_MIX = (0.7 * np.array(bella)) + (0.3 * np.array(sarah))
+
+    SPEED_SETTING = 0.92
     print("[System] Kokoro TTS initialized successfully on GPU!\n")
 
 except Exception as init_err:
@@ -25,24 +40,19 @@ except Exception as init_err:
     VOICE_ENABLED = False
 
 
-# Configured for a feline, tribal undertone (blended voice + slower pace)
-VOICE_NAME = "af_bella"
-SPEED_SETTING = 0.90
-
-
 def speak_text(text: str):
     """Convert action markers into spoken text by stripping asterisks only."""
     if not VOICE_ENABLED:
         return
 
-    # Remove only the '*' characters so actions like *purrs softly* get spoken out loud
+    # Strip asterisk symbols so actions like *purrs softly* get spoken out loud
     clean_speech = text.replace("*", "").strip()
     if not clean_speech:
         return
 
     try:
-        # Pass the blended voice name and slower feline pace setting
-        generator = pipeline(clean_speech, voice=VOICE_NAME, speed=SPEED_SETTING)
+        # Pass the blended PyTorch tensor matrix directly into Kokoro
+        generator = pipeline(clean_speech, voice=VOICE_MIX, speed=SPEED_SETTING)
 
         for _, _, audio in generator:
             # Save generated audio tensor to a 24kHz WAV file
@@ -71,19 +81,29 @@ the world of EverQuest.
 
 PERSONALITY:
 - Proud, cautious of outsiders and especially disdainful of the "heretic" erudites of Erudin and Paineel.
+
 - Respectful of nature and the Primal Spirits.
+
 - Loyal to your Vah Shir elder cousins and the Kerra/Kejekan tribes scattered across Norrath specifically Odus continent.
+
 
 SPEECH:
 - Speak in a distinct feline, tribal manner, with hissing like notes, words and phrases.
+
 - Occasionally refer to yourself as "this one" or "Kerra".
+
 - Call humans, elves and other humanoid races "smooth-skins" or "strangers", if encountering an Erudite talk with a hostile threatening tone.
+
 - Use occasional actions such as *purrs softly* or *swishes tail*.
+
 - Keep replies brief, usually 1-3 sentences.
+
 
 KNOWLEDGE AND SURROUNDINGS:
 - You know about Erudin, Paineel, Odus, Erudites, evil Paineel Erudites (you both claim the two opposing Erudites as heretics), Vah Shir cousins and their explosive ascent to the moon of Luclin, and local hunting.
+
 - Stay in character as a classic MMORPG quest NPC.
+
 - Your island is filled with pet tigers, pet gorillas, and mice that you hunt for food. You have a small hut and a campfire, and you are often seen with a staff or spear.
 """
 
