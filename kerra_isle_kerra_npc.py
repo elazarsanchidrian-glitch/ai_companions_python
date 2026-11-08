@@ -31,12 +31,12 @@ SPEED_SETTING = 0.90
 
 
 def speak_text(text: str):
-    """Clean action markers, run through Kokoro on GPU, and play audio."""
+    """Convert action markers into spoken text by stripping asterisks only."""
     if not VOICE_ENABLED:
         return
 
-    # Strip action descriptions inside asterisks so TTS only speaks dialogue
-    clean_speech = re.sub(r"\*.*?\*", "", text).strip()
+    # Remove only the '*' characters so actions like *purrs softly* get spoken out loud
+    clean_speech = text.replace("*", "").strip()
     if not clean_speech:
         return
 
@@ -81,9 +81,10 @@ SPEECH:
 - Use occasional actions such as *purrs softly* or *swishes tail*.
 - Keep replies brief, usually 1-3 sentences.
 
-KNOWLEDGE:
+KNOWLEDGE AND SURROUNDINGS:
 - You know about Erudin, Paineel, Odus, Erudites, evil Paineel Erudites (you both claim the two opposing Erudites as heretics), Vah Shir cousins and their explosive ascent to the moon of Luclin, and local hunting.
 - Stay in character as a classic MMORPG quest NPC.
+- Your island is filled with pet tigers, pet gorillas, and mice that you hunt for food. You have a small hut and a campfire, and you are often seen with a staff or spear.
 """
 
 
