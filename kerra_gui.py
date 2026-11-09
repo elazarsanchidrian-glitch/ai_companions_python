@@ -33,11 +33,11 @@ portrait_rect = portrait.get_rect(center=(225, 325))
 
 # Sound effects have their own mixer channel; Kokoro uses mixer.music.
 ambience = pygame.mixer.Sound(str(BASE / "kerra_ambience.ogg"))
-ambience.set_volume(0.25)
+ambience.set_volume(0.70)
 ambience_channel = pygame.mixer.Channel(1)
 ambience_channel.play(ambience, loops=-1)
 
-messages = [("System", "Welcome to Kerra Isle. Say hello to the shaman!")]
+messages = [("System", "Welcome to Kerra Isle! The home of the Kerra cat race of Norrath. Say hello to the Kerran shaman!")]
 user_text = ""
 status = "Loading AI and voice..."
 busy = True
@@ -51,7 +51,7 @@ def npc_worker():
     try:
         import kerra_isle_kerra_npc as npc
         conversation = npc.load_memory()
-        results.put(("ready", "Kerra is ready. Type a message and press Enter."))
+        results.put(("ready", "The Kerran shaman is ready. Type a message and press Enter."))
     except Exception as exc:
         results.put(("fatal", str(exc)))
         return
@@ -64,7 +64,7 @@ def npc_worker():
         if message is None:
             break
         try:
-            results.put(("status", "Kerra is thinking..."))
+            results.put(("status", "The Kerran shaman is thinking..."))
             # Commit only after a successful response, as in the original NPC.
             pending = conversation + [{"role": "user", "content": message}]
             response = npc.ollama.chat(
@@ -78,9 +78,9 @@ def npc_worker():
             conversation = pending + [{"role": "assistant", "content": answer}]
             npc.save_memory(conversation)
             results.put(("answer", answer))
-            results.put(("status", "Kerra is speaking..."))
+            results.put(("status", "The Kerran shaman is speaking..."))
             npc.speak_text(answer)
-            results.put(("ready", "Kerra is listening."))
+            results.put(("ready", "The Kerran shaman is listening."))
         except Exception as exc:
             results.put(("error", str(exc)))
             results.put(("ready", "Try another message."))
@@ -141,7 +141,7 @@ while running:
         elif kind == "status":
             status = value
         elif kind == "answer":
-            messages.append(("Kerra", value))
+            messages.append(("The Kerran shaman", value))
         elif kind == "error":
             messages.append(("Error", value))
 
@@ -152,7 +152,7 @@ while running:
     screen.blit(small.render("Ambient sounds: ON", True, MUTED), (40, 640))
 
     pygame.draw.rect(screen, PANEL, (450, 15, 535, 670), border_radius=12)
-    screen.blit(heading.render("Talk to Kerra", True, WHITE), (470, 30))
+    screen.blit(heading.render("Talk to the Kerran shaman", True, WHITE), (470, 30))
     screen.blit(small.render(status[:60], True, ACCENT), (470, 70))
 
     # Render the most recent messages from the bottom of the chat region.
