@@ -1,0 +1,9 @@
+﻿.env
+.venv/
+venv/
+temp_npc_speech.wav
+kerra_memory.json
+__pycache__/
+*.pyc
+bandit_memory.json
+temp_bandit_speech.wav
